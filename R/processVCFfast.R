@@ -22,9 +22,9 @@ spreadAllelesAcrossRows = function(snp){
 countDigSites = function(biostring, enzyme1, enzyme2, enzyme3) {
   #Count the number of times enzyme1, XbaI, and SfiI sites occur in a given biostring
 
-  # enzyme1 = DNAString('GGTACC') #KpnI
-  # xba = DNAString('TCTAGA') #XbaI
-  # sfi = DNAString('GGCCNNNNNGGCC') #SfiI
+  # enzyme1 = DNAString('ACCGGT') #AgeI
+  # xba = DNAString('CCTGCAGG') #SbfI
+  # sfi = DNAString('TAGGGATAACAGGGTAAT') #I-SceI
 
   sum(countPattern(enzyme1, biostring, fixed = FALSE),
       countPattern(enzyme2, biostring, fixed = FALSE),
