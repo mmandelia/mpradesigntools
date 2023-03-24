@@ -20,11 +20,11 @@ spreadAllelesAcrossRows = function(snp){
 #' @importFrom Biostrings DNAString
 #' @importFrom Biostrings reverse
 countDigSites = function(biostring, enzyme1, enzyme2, enzyme3) {
-  #Count the number of times enzyme1, XbaI, and SfiI sites occur in a given biostring
+  #Count the number of times enzyme1, enzyme2, and enzyme3 sites occur in a given biostring
 
   # enzyme1 = DNAString('ACCGGT') #AgeI
-  # xba = DNAString('CCTGCAGG') #SbfI
-  # sfi = DNAString('TAGGGATAACAGGGTAAT') #I-SceI
+  # enzyme2 = DNAString('CCTGCAGG') #SbfI
+  # enzyme3 = DNAString('TAGGGATAACAGGGTAAT') #I-SceI
 
   sum(countPattern(enzyme1, biostring, fixed = FALSE),
       countPattern(enzyme2, biostring, fixed = FALSE),
@@ -225,9 +225,9 @@ processSnp = function(snp,
   # also has a dedicated pool of barcodes to select from
 
   genome = BSgenome.Hsapiens.UCSC.hg38
-  # kpn = 'GGTACC' #KpnI
-  # xba = 'TCTAGA' #XbaI
-  # sfi = 'GGCCNNNNNGGCC' #SfiI
+  # enzyme1 = DNAString('ACCGGT') #AgeI
+  # enzyme2 = DNAString('CCTGCAGG') #SbfI
+  # enzyme3 = DNAString('TAGGGATAACAGGGTAAT') #I-SceI
 
   isSNV = (snp$REF %in% c('A', 'C', 'G', 'T') && snp$ALT %in% c('A', 'C', 'G', 'T')) #look at me interchanging between SNV and SNP willy-nilly ####
   isINS = snp$REF == '-'
@@ -257,6 +257,7 @@ processSnp = function(snp,
                                max(nchar(snp$REF) + 1 , nchar(snp$ALT) + 1),
                                nchar(enzyme1),
                                nchar(enzyme2),
+                               nchar(enzyme3),
                                bc_length)
   } else if (isDEL) {
     tot_construct_length = sum(nchar(fwprimer),
@@ -266,6 +267,7 @@ processSnp = function(snp,
                                max(-nchar(snp$REF), -nchar(snp$ALT)),
                                nchar(enzyme1),
                                nchar(enzyme2),
+                               nchar(enzyme3),
                                bc_length)
   } else {
     tot_construct_length = sum(nchar(fwprimer),
@@ -275,12 +277,13 @@ processSnp = function(snp,
                                max(nchar(snp$REF), nchar(snp$ALT)),
                                nchar(enzyme1),
                                nchar(enzyme2),
+                               nchar(enzyme3),
                                bc_length)
   }
 
   if (extra_elements) {
     # extra elements are the TG & GGC Namrata added to CD36 MPRA for some reason
-    tot_construct_length = tot_construct_length + 5
+    tot_construct_length = tot_construct_length
   }
 
   if (flip_RV & grepl('RV', snp$INFO)) {
@@ -400,12 +403,10 @@ processSnp = function(snp,
 
     if (extra_elements) {
       res %<>% mutate(sequence = paste0(fwprimer,
-                                        'TG',
                                         constrseq,
                                         enzyme1,
                                         enzyme2,
-                                        barcodes,
-                                        'GGC',
+                                        enzyme3,
                                         revprimer),
                       ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
     } else {
@@ -413,7 +414,7 @@ processSnp = function(snp,
                                         constrseq,
                                         enzyme1,
                                         enzyme2,
-                                        barcodes,
+                                        enzyme3,
                                         revprimer),
                       ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
     }
@@ -455,12 +456,10 @@ processSnp = function(snp,
                              dig_patterns,
                              dig_site_locations) %>%
             mutate(sequence = paste0(fwprimer,
-                                     'TG',
                                      constrseq_fixed,
                                      enzyme1,
                                      enzyme2,
-                                     barcodes,
-                                     'GGC',
+                                     enzyme3,
                                      revprimer),
                    ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3))) %>%
             tidyr::nest_legacy(aberrant_pattern:constrseq_fixed,
@@ -474,7 +473,7 @@ processSnp = function(snp,
                                      constrseq_fixed,
                                      enzyme1,
                                      enzyme2,
-                                     barcodes,
+                                     enzyme3,
                                      revprimer),
                    ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3))) %>%
             tidyr::nest_legacy(aberrant_pattern:constrseq_fixed,
@@ -519,12 +518,10 @@ processSnp = function(snp,
           fixed = broken %>% mutate(barcodes = sample(brokenPool,
                                                       nrow(broken)),
                                     sequence = paste0(fwprimer,
-                                                      'TG',
                                                       constrseq,
                                                       enzyme1,
                                                       enzyme2,
-                                                      barcodes,
-                                                      'GGC',
+                                                      enzyme3,
                                                       revprimer),
                                     ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
         } else {
@@ -534,8 +531,8 @@ processSnp = function(snp,
                                                       constrseq,
                                                       enzyme1,
                                                       enzyme2,
-                                                      barcodes,
-                                                      revprimer),
+                                                      enzyme3,
+                                                      revprimer)
                                     ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
         }
         res = rbind(working, fixed)
@@ -612,12 +609,10 @@ processSnp = function(snp,
                                                                       toString(snpseq),
                                                                       altseq)),
                        sequence = paste0(fwprimer,
-                                         'TG',
                                          constrseq,
                                          enzyme1,
                                          enzyme2,
-                                         barcodes,
-                                         'GGC',
+                                         enzyme3,
                                          revprimer),
                        ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
     } else {
@@ -676,12 +671,10 @@ processSnp = function(snp,
                              dig_patterns,
                              dig_site_locations) %>%
             mutate(sequence = paste0(fwprimer,
-                                     'TG',
                                      constrseq_fixed,
                                      enzyme1,
                                      enzyme2,
-                                     barcodes,
-                                     'GGC',
+                                     enzyme3,
                                      revprimer),
                    ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3))) %>%
             tidyr::nest_legacy(aberrant_pattern:constrseq_fixed,
@@ -695,7 +688,7 @@ processSnp = function(snp,
                                      constrseq_fixed,
                                      enzyme1,
                                      enzyme2,
-                                     barcodes,
+                                     enzyme3,
                                      revprimer),
                    ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3))) %>%
             tidyr::nest_legacy(aberrant_pattern:constrseq_fixed,
@@ -739,12 +732,10 @@ processSnp = function(snp,
           fixed = broken %>% mutate(barcodes = sample(brokenPool,
                                                       nrow(broken)),
                                     sequence = paste0(fwprimer,
-                                                      'TG',
                                                       constrseq,
                                                       enzyme1,
                                                       enzyme2,
-                                                      barcodes,
-                                                      'GGC',
+                                                      enzyme3,
                                                       revprimer),
                                     ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
         } else {
@@ -754,7 +745,7 @@ processSnp = function(snp,
                                                       constrseq,
                                                       enzyme1,
                                                       enzyme2,
-                                                      barcodes,
+                                                      enzyme3,
                                                       revprimer),
                                     ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
         }
@@ -835,12 +826,10 @@ processSnp = function(snp,
 
     if (extra_elements) {
       res %<>% mutate(sequence = paste0(fwprimer,
-                                        'TG',
                                         constrseq,
                                         enzyme1,
                                         enzyme2,
-                                        barcodes,
-                                        'GGC',
+                                        enzyme3,
                                         revprimer),
                       ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
     } else {
@@ -848,7 +837,7 @@ processSnp = function(snp,
                                         constrseq,
                                         enzyme1,
                                         enzyme2,
-                                        barcodes,
+                                        enzyme3,
                                         revprimer),
                       ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
     }
@@ -879,12 +868,10 @@ processSnp = function(snp,
                              dig_patterns,
                              dig_site_locations) %>%
             mutate(sequence = paste0(fwprimer,
-                                     'TG',
                                      constrseq_fixed,
                                      enzyme1,
                                      enzyme2,
-                                     barcodes,
-                                     'GGC',
+                                     enzyme3,
                                      revprimer),
                    ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3))) %>%
             tidyr::nest_legacy(aberrant_pattern:constrseq_fixed,
@@ -898,7 +885,7 @@ processSnp = function(snp,
                                      constrseq_fixed,
                                      enzyme1,
                                      enzyme2,
-                                     barcodes,
+                                     enzyme3,
                                      revprimer),
                    ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3))) %>%
             tidyr::nest_legacy(aberrant_pattern:constrseq_fixed,
@@ -941,12 +928,10 @@ processSnp = function(snp,
           fixed = broken %>% mutate(barcodes = sample(brokenPool,
                                                       nrow(broken)),
                                     sequence = paste0(fwprimer,
-                                                      'TG',
                                                       constrseq,
                                                       enzyme1,
                                                       enzyme2,
-                                                      barcodes,
-                                                      'GGC',
+                                                      enzyme3,
                                                       revprimer),
                                     ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
         } else {
@@ -956,7 +941,7 @@ processSnp = function(snp,
                                                       constrseq,
                                                       enzyme1,
                                                       enzyme2,
-                                                      barcodes,
+                                                      enzyme3,
                                                       revprimer),
                                     ndigSites = sequence %>% purrr::map_int(~countDigSites(DNAString(.x), enzyme1, enzyme2, enzyme3)))
         }
@@ -1102,21 +1087,20 @@ processVCF = function(vcf,
                       downstreamContextRange,
                       fwprimer,
                       revprimer,
-                      enzyme1 = 'GGTACC',
-                      enzyme2 = 'TCTAGA',
-                      enzyme3 = 'GGCCNNNNNGGCC',
+                      enzyme1 = 'ACCGGT',
+                      enzyme2 = 'CCTGCAGG',
+                      enzyme3 = 'TAGGGATAACAGGGTAAT',
                       filterPatterns = 'AATAAA',
                       alter_aberrant = FALSE,
                       extra_elements = FALSE,
                       max_construct_size = NULL,
-                      barcode_set = 'twelvemers',
                       ensure_all_4_nuc = TRUE,
                       flip_RV = TRUE,
                       outPath = NULL){
 
-  # kpn = 'GGTACC' #KpnI
-  # xba = 'TCTAGA' #XbaI
-  # sfi = 'GGCCNNNNNGGCC' #SfiI
+  # enzyme1 = DNAString('ACCGGT') #AgeI
+  # enzyme2 = DNAString('CCTGCAGG') #SbfI
+  # enzyme3 = DNAString('TAGGGATAACAGGGTAAT') #I-SceI
 
   #skip metadata lines
   vcf_lines = readLines(con = vcf)
